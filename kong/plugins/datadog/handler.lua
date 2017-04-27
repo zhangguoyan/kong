@@ -4,7 +4,7 @@ local statsd_logger = require "kong.plugins.datadog.statsd_logger"
 
 local DatadogHandler = BasePlugin:extend()
 
-DatadogHandler.PRIORITY = 1
+DatadogHandler.PRIORITY = 800
 
 local ngx_timer_at = ngx.timer.at
 local string_gsub = string.gsub
@@ -56,12 +56,12 @@ local function log(premature, conf, message)
     ngx.log(ngx.ERR, "failed to create Statsd logger: ", err)
     return
   end
-  
+
   local api_name = string_gsub(message.api.name, "%.", "_")
   for _, metric in ipairs(conf.metrics) do
     local gauge = gauges[metric]
     if gauge then
-      
+
       gauge(api_name, message, logger, conf.tags[metric])
     end
   end

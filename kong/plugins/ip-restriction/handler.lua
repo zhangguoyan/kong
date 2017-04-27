@@ -4,7 +4,7 @@ local iputils = require "resty.iputils"
 
 local IpRestrictionHandler = BasePlugin:extend()
 
-IpRestrictionHandler.PRIORITY = 990
+IpRestrictionHandler.PRIORITY = 1450
 
 function IpRestrictionHandler:new()
   IpRestrictionHandler.super.new(self, "ip-restriction")
