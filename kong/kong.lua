@@ -237,8 +237,9 @@ function Kong.balancer()
   end
 
   tries[addr.try_count] = {
-    ip    = addr.ip,
-    port  = addr.port,
+    ip      = addr.ip,
+    port    = addr.port,
+    latency = addr.latency,
   }
 
   -- set the targets as resolved

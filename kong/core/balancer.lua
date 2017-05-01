@@ -7,10 +7,15 @@ local ring_balancer = require "resty.dns.balancer"
 
 local toip = dns_client.toip
 local log = ngx.log
+local ngx_now = ngx.now
 
 local ERROR = ngx.ERR
 local DEBUG = ngx.DEBUG
 local EMPTY_T = pl_tablex.readonly {}
+
+local function get_now()
+  return ngx_now() * 1000 -- time is kept in seconds with millisecond resolution.
+end
 
 --===========================================================
 -- Ring-balancer based resolution
@@ -239,17 +244,21 @@ end
 
 -- Resolves the target structure in-place (fields `ip`, `port`, and `hostname`).
 --
+-- Also sets the `latency` field to track time spent in the balancer.
 -- If the hostname matches an 'upstream' pool, then it must be balanced in that
 -- pool, in this case any port number provided will be ignored, as the pool provides it.
 --
 -- @param target the data structure as defined in `core.access.before` where it is created
 -- @return true on success, nil+error otherwise
 local function execute(target)
+  local latency_start = get_now()
+
   if target.type ~= "name" then
     -- it's an ip address (v4 or v6), so nothing we can do...
     target.ip = target.host
     target.port = target.port or 80 -- TODO: remove this fallback value
     target.hostname = target.host
+    target.latency = latency_start - get_now()
     return true
   end
 
@@ -293,6 +302,7 @@ local function execute(target)
     target.ip = ip
     target.port = port
     target.hostname = hostname
+    target.latency = latency_start - get_now()
     return true
   end
 
@@ -311,6 +321,7 @@ local function execute(target)
   target.ip = ip
   target.port = port
   target.hostname = target.host
+  target.latency = latency_start - get_now()
   return true
 end
 

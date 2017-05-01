@@ -105,6 +105,7 @@ return {
         -- failures          = nil,            -- for each failure an entry { name = "...", code = xx }
         -- balancer          = nil,            -- the balancer object, in case of a balancer
         -- hostname          = nil,            -- the hostname belonging to the final target IP
+        -- latency           = nil,            -- latency in the balancer/dns for each try
       }
 
       var.upstream_scheme = upstream.scheme
