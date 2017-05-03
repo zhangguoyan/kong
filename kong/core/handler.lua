@@ -77,6 +77,26 @@ return {
       ctx.KONG_REWRITE_TIME = get_now() - ctx.KONG_REWRITE_START -- time spent in Kong's rewrite_by_lua
     end
   },
+  balancer = {
+    before = function()
+      local addr = ngx.ctx.balancer_address
+      local current_try = addr.tries[addr.try_count]
+      current_try.balancer_start = get_now()
+    end,
+    after = function ()
+      local ctx = ngx.ctx
+      local addr = ctx.balancer_address
+      local current_try = addr.tries[addr.try_count]
+
+      -- record try-latency
+      local try_latency = get_now() - current_try.balancer_start
+      current_try.balancer_latency = try_latency
+      current_try.balancer_start = nil
+
+      -- record overall latency
+      ctx.KONG_BALANCER_TIME = (ctx.KONG_BALANCER_TIME or 0) + try_latency
+    end
+  },
   access = {
     before = function()
       if not router then
@@ -113,7 +133,6 @@ return {
         send_timeout         = api.upstream_send_timeout or 60000,
         read_timeout         = api.upstream_read_timeout or 60000,
         -- ip                = nil,            -- final target IP address
-        -- failures          = nil,            -- for each failure an entry { name = "...", code = xx }
         -- balancer          = nil,            -- the balancer object, in case of a balancer
         -- hostname          = nil,            -- the hostname belonging to the final target IP
       }
