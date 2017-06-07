@@ -1,7 +1,17 @@
-local utils = require "kong.tools.utils"
-local cjson = require "cjson"
-local responses = require "kong.tools.responses"
-local app_helpers = require "lapis.application"
+local utils         = require "kong.tools.utils"
+local cjson         = require "cjson"
+local responses     = require "kong.tools.responses"
+local app_helpers   = require "lapis.application"
+
+
+local decode_base64 = ngx.decode_base64
+local encode_base64 = ngx.encode_base64
+local encode_args   = ngx.encode_args
+local tonumber      = tonumber
+local ipairs        = ipairs
+local next          = next
+local type          = type
+
 
 local _M = {}
 
@@ -107,11 +117,11 @@ function _M.find_target_by_target_or_id(self, dao_factory, helpers)
   end
 end
 
-function _M.paginated_set(self, dao_collection)
-  local size = self.params.size and tonumber(self.params.size) or 100
-  local offset = self.params.offset and ngx.decode_base64(self.params.offset)
+function _M.paginated_set(self, dao_collection, cb)
+  local size   = self.params.size   and tonumber(self.params.size) or 100
+  local offset = self.params.offset and decode_base64(self.params.offset)
 
-  self.params.size = nil
+  self.params.size   = nil
   self.params.offset = nil
 
   local filter_keys = next(self.params) and self.params
@@ -128,23 +138,43 @@ function _M.paginated_set(self, dao_collection)
 
   local next_url
   if offset then
-    offset = ngx.encode_base64(offset)
+    offset = encode_base64(offset)
     next_url = self:build_url(self.req.parsed_url.path, {
-      port = self.req.parsed_url.port,
-      query = ngx.encode_args {
+      port     = self.req.parsed_url.port,
+      query    = encode_args {
         offset = offset,
-        size = size
+        size   = size
       }
     })
   end
 
-  return responses.send_HTTP_OK {
+  local data
+
+  if #rows == 0 then
     -- FIXME: remove and stick to previous `empty_array_mt` metatable
     -- assignment once https://github.com/openresty/lua-cjson/pull/16
     -- is included in the OpenResty release we use.
-    data = #rows > 0 and rows or cjson.empty_array,
-    total = total_count,
-    offset = offset,
+    data = cjson.empty_array
+
+  else
+    data = rows
+
+    if type(cb) == "function" then
+      for i, row in ipairs(rows) do
+        local r = cb(row)
+        if r then
+          if type(r) == "table" then
+            data[i] = r
+          end
+        end
+      end
+    end
+  end
+
+  return responses.send_HTTP_OK {
+    data     = data,
+    total    = total_count,
+    offset   = offset,
     ["next"] = next_url
   }
 end
