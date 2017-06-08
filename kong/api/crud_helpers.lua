@@ -201,12 +201,19 @@ function _M.get(primary_keys, dao_collection, cb)
 end
 
 --- Insertion of an entity.
-function _M.post(params, dao_collection, success)
+function _M.post(params, dao_collection, cb)
   local data, err = dao_collection:insert(params)
   if err then
     return app_helpers.yield_error(err)
   else
-    if success then success(utils.deep_copy(data)) end
+    if type(cb) == "function" then
+      local r = cb(data)
+      if r then
+        if type(r) == "table" then
+          data = r
+        end
+      end
+    end
     return responses.send_HTTP_CREATED(data)
   end
 end
