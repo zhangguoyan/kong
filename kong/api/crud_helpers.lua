@@ -213,7 +213,7 @@ end
 
 --- Partial update of an entity.
 -- Filter keys must be given to get the row to update.
-function _M.patch(params, dao_collection, filter_keys)
+function _M.patch(params, dao_collection, filter_keys, cb)
   if not next(params) then
     return responses.send_HTTP_BAD_REQUEST("empty body")
   end
@@ -223,6 +223,14 @@ function _M.patch(params, dao_collection, filter_keys)
   elseif updated_entity == nil then
     return responses.send_HTTP_NOT_FOUND()
   else
+    if type(cb) == "function" then
+      local r = cb(updated_entity)
+      if r then
+        if type(r) == "table" then
+          updated_entity = r
+        end
+      end
+    end
     return responses.send_HTTP_OK(updated_entity)
   end
 end
