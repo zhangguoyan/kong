@@ -181,13 +181,21 @@ end
 
 -- Retrieval of an entity.
 -- The DAO requires to be given a table containing the full primary key of the entity
-function _M.get(primary_keys, dao_collection)
+function _M.get(primary_keys, dao_collection, cb)
   local row, err = dao_collection:find(primary_keys)
   if err then
     return app_helpers.yield_error(err)
   elseif row == nil then
     return responses.send_HTTP_NOT_FOUND()
   else
+    if type(cb) == "function" then
+      local r = cb(row)
+      if r then
+        if type(r) == "table" then
+          row = r
+        end
+      end
+    end
     return responses.send_HTTP_OK(row)
   end
 end
