@@ -230,7 +230,7 @@ end
 -- Full update of an entity.
 -- First, we check if the entity body has primary keys or not,
 -- if it does, we are performing an update, if not, an insert.
-function _M.put(params, dao_collection)
+function _M.put(params, dao_collection, cb)
   local new_entity, err
 
   local model = dao_collection.model_mt(params)
@@ -238,12 +238,28 @@ function _M.put(params, dao_collection)
     -- If entity body has no primary key, deal with an insert
     new_entity, err = dao_collection:insert(params)
     if not err then
+      if type(cb) == "function" then
+        local r = cb(new_entity)
+        if r then
+          if type(r) == "table" then
+            new_entity = r
+          end
+        end
+      end
       return responses.send_HTTP_CREATED(new_entity)
     end
   else
     -- If entity body has primary key, deal with update
     new_entity, err = dao_collection:update(params, params, {full = true})
     if not err then
+      if type(cb) == "function" then
+        local r = cb(new_entity)
+        if r then
+          if type(r) == "table" then
+            new_entity = r
+          end
+        end
+      end
       return responses.send_HTTP_OK(new_entity)
     end
   end
