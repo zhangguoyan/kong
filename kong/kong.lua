@@ -230,7 +230,7 @@ function Kong.balancer()
 
   addr.try_count = addr.try_count + 1
   if addr.try_count > 1 then
-    -- only call balancer on retry, first one is done in `core.access.before` which runs
+    -- only call balancer on retry, first one is done in `core.access.after` which runs
     -- in the ACCESS context and hence has less limitations than this BALANCER context
     -- where the retries are executed
 
@@ -258,6 +258,28 @@ function Kong.balancer()
     ip    = addr.ip,
     port  = addr.port,
   }
+
+  -- new try
+
+  -- set the upstream host header if not `preserve_host`
+  -- executed here since `
+  do
+    local var           = ngx.var
+    local upstream_host = var.upstream_host
+
+    if not upstream_host or upstream_host == "" then
+      upstream_host = addr.hostname
+
+      local upstream_scheme = var.upstream_scheme
+      if upstream_scheme == "http" and addr.port ~= 80
+        or upstream_scheme == "https" and addr.port ~= 443
+        then
+          upstream_host = upstream_host .. ":" .. addr.port
+      end
+
+      var.upstream_host = upstream_host
+    end
+  end
 
   -- set the targets as resolved
   local ok, err = set_current_peer(addr.ip, addr.port)
